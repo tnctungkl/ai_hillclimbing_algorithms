@@ -19,13 +19,13 @@ def calculate_accuracy(optimal_path, algorithm_path):
 
 class Space:
     def __init__(self, height, width, num_hospitals):
-        self.best_tsp_path = None
-        self.best_tsp_cost = None
         self.height = height
         self.width = width
         self.num_hospitals = num_hospitals
         self.houses = set()
         self.hospitals = set()
+        self.best_tsp_path = None
+        self.best_tsp_cost = None
 
     def add_house(self, row, col):
         self.houses.add((row, col))
@@ -348,30 +348,38 @@ class Space:
         def calculate_heuristic_cost(point1, point2):
             return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
 
-        unvisited = self.houses.copy()
-        unvisited.remove(start)
-        path = [start]
-        total_cost = 0
+        open_set = [(start, 0, calculate_heuristic_cost(start, random.choice(list(self.houses))))]
+        came_from = {}
+        g_score = {house: math.inf for house in self.houses}
+        g_score[start] = 0
+        f_score = {house: math.inf for house in self.houses}
+        f_score[start] = calculate_heuristic_cost(start, random.choice(list(self.houses)))
 
-        while unvisited:
-            current_point = path[-1]
-            best_next_point = None
-            best_next_cost = math.inf
+        while open_set:
+            current, g, f = min(open_set, key=lambda x: x[2])
+            open_set.remove((current, g, f))
 
-            for next_point in unvisited:
-                heuristic_cost = calculate_heuristic_cost(current_point, next_point)
-                if heuristic_cost < best_next_cost:
-                    best_next_cost = heuristic_cost
-                    best_next_point = next_point
+            if current in self.houses:
+                path = [current]
+                while current in came_from:
+                    current = came_from[current]
+                    path.append(current)
+                path.reverse()
+                return path, g
 
-            total_cost += best_next_cost
-            path.append(best_next_point)
-            unvisited.remove(best_next_point)
+            for neighbor in self.get_neighbors(*current):
+                tentative_g = g_score[current] + 1
 
-        total_cost += calculate_heuristic_cost(path[-1], start)
-        path.append(start)
+                if tentative_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g
+                    f_score[neighbor] = tentative_g + calculate_heuristic_cost(neighbor,
+                                                                               random.choice(list(self.houses)))
 
-        return path, total_cost
+                    if neighbor not in [item[0] for item in open_set]:
+                        open_set.append((neighbor, tentative_g, f_score[neighbor]))
+
+        return None, math.inf
 
     def dfs(self, start):
         def dls_helper(node, visited):
@@ -498,15 +506,12 @@ class Space:
         intersect = None
 
         while forward_queue and backward_queue:
-            # Forward Search
             current_forward_node = forward_queue.pop(0)
 
             for neighbor in self.get_neighbors(*current_forward_node):
                 if neighbor not in forward_visited:
                     forward_queue.append(neighbor)
                     forward_visited.add(neighbor)
-
-            # Backward Search
             current_backward_node = backward_queue.pop(0)
 
             for neighbor in self.get_neighbors(*current_backward_node):
@@ -514,17 +519,13 @@ class Space:
                     backward_queue.append(neighbor)
                     backward_visited.add(neighbor)
 
-            # Check for intersection
             intersect = forward_visited.intersection(backward_visited)
             if intersect:
                 break
 
-        # Merge the paths from both ends
         path = list(intersect)
         forward_path = forward_queue + path
         backward_path = list(reversed(backward_queue + path))
-
-        # Calculate the total cost
         total_cost = calculate_actual_cost(forward_path + backward_path)
         return forward_path + backward_path, total_cost
 
@@ -1068,40 +1069,40 @@ def reset_pngs():
 
 def ask_user_reset_or_continue():
     while True:
-        print("*****************************************************************************************")
+        print("**********************************************************************************")
         user_input = input("Enter 'RESET' to clear generated images, or 'CONTINUE' to keep them: ")
-        print("*****************************************************************************************")
+        print("**********************************************************************************")
         if user_input.lower() == 'reset':
             reset_pngs()
             return True
         elif user_input.lower() == 'continue':
             return False
         else:
-            print("*****************************************************************************************")
+            print("********************************************************************************")
             print("Invalid input. Please enter 'RESET' or 'CONTINUE'.")
-            print("*****************************************************************************************")
+            print("*********************************************************************************")
 
 
 def ask_user_to_quit_or_play():
     while True:
-        print("*****************************************************************************************")
+        print("*****************************************************************")
         user_input = input("Enter 'QUIT' to end the run, or 'PLAY' to continue: ")
-        print("*****************************************************************************************")
+        print("*****************************************************************")
         if user_input.lower() == 'quit':
             return False
         elif user_input.lower() == 'play':
             return True
         else:
-            print("*****************************************************************************************")
+            print("**************************************************************")
             print("Invalid input. Please enter 'QUIT' or 'PLAY'.")
-            print("*****************************************************************************************")
+            print("**************************************************************")
 
 
 def run_algorithm_randomly():
     while True:
-        print("*****************************************************************************************")
+        print("***************************************************************************")
         user_input = input("Enter 'STEP' to run step by step or 'ALL' to see all results: ")
-        print("*****************************************************************************************")
+        print("***************************************************************************")
         if user_input.lower() == 'step':
             run_algorithm_randomly_once()
             ask_user_reset_or_continue()
@@ -1109,11 +1110,10 @@ def run_algorithm_randomly():
             run_algorithm_randomly_all()
             ask_user_reset_or_continue()
         else:
-            print("*****************************************************************************************")
+            print("************************************************************************")
             print("Invalid input. Please enter 'STEP' or 'ALL'.")
-            print("*****************************************************************************************")
+            print("************************************************************************")
             continue
-        write_results_to_csv(results)
 
         if not ask_user_to_quit_or_play():
             break
